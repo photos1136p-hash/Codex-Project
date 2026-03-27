@@ -12,7 +12,6 @@ const canvas = document.getElementById('editorCanvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
 let originalImageData = null;
-let uploadedFile = null;
 
 function setStatus(message, error = false) {
   statusEl.textContent = message;
@@ -31,15 +30,20 @@ function fitCanvasToImage(img) {
 imageInput.addEventListener('change', (event) => {
   const [file] = event.target.files;
   if (!file) return;
-  uploadedFile = file;
 
   const img = new Image();
   img.onload = () => {
     fitCanvasToImage(img);
-    setStatus('Image loaded. Choose a local AI tool or prompt edit.');
+    setStatus('Image loaded. Choose a local tool or run AI prompt edit.');
+    URL.revokeObjectURL(img.src);
   };
+  img.onerror = () => setStatus('Could not read the selected image.', true);
   img.src = URL.createObjectURL(file);
 });
+
+function clamp(value) {
+  return Math.max(0, Math.min(255, value));
+}
 
 function applyPixelPass(transform) {
   if (!originalImageData) {
@@ -52,10 +56,10 @@ function applyPixelPass(transform) {
 
   for (let i = 0; i < data.length; i += 4) {
     const [r, g, b, a] = transform(data[i], data[i + 1], data[i + 2], data[i + 3]);
-    data[i] = Math.max(0, Math.min(255, r));
-    data[i + 1] = Math.max(0, Math.min(255, g));
-    data[i + 2] = Math.max(0, Math.min(255, b));
-    data[i + 3] = a;
+    data[i] = clamp(r);
+    data[i + 1] = clamp(g);
+    data[i + 2] = clamp(b);
+    data[i + 3] = clamp(a);
   }
 
   ctx.putImageData(current, 0, 0);
@@ -85,19 +89,27 @@ denoiseBtn.addEventListener('click', () => {
   const src = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const dst = ctx.createImageData(canvas.width, canvas.height);
 
-  for (let y = 1; y < canvas.height - 1; y++) {
-    for (let x = 1; x < canvas.width - 1; x++) {
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
       let sumR = 0;
       let sumG = 0;
       let sumB = 0;
+      let sumA = 0;
       let count = 0;
 
       for (let ky = -1; ky <= 1; ky++) {
         for (let kx = -1; kx <= 1; kx++) {
-          const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+          const px = x + kx;
+          const py = y + ky;
+          if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) {
+            continue;
+          }
+
+          const idx = (py * canvas.width + px) * 4;
           sumR += src.data[idx];
           sumG += src.data[idx + 1];
           sumB += src.data[idx + 2];
+          sumA += src.data[idx + 3];
           count++;
         }
       }
@@ -106,7 +118,7 @@ denoiseBtn.addEventListener('click', () => {
       dst.data[out] = sumR / count;
       dst.data[out + 1] = sumG / count;
       dst.data[out + 2] = sumB / count;
-      dst.data[out + 3] = 255;
+      dst.data[out + 3] = sumA / count;
     }
   }
 
@@ -137,7 +149,7 @@ resetBtn.addEventListener('click', () => {
 });
 
 aiEditBtn.addEventListener('click', async () => {
-  if (!uploadedFile) {
+  if (!originalImageData) {
     setStatus('Upload an image first.', true);
     return;
   }
@@ -148,16 +160,20 @@ aiEditBtn.addEventListener('click', async () => {
     return;
   }
 
+  aiEditBtn.disabled = true;
+
   try {
     setStatus('Generating AI edit...');
 
-    const formData = new FormData();
-    formData.append('image', uploadedFile);
-    formData.append('prompt', prompt);
-
     const response = await fetch('/api/ai-edit', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        prompt,
+        imageDataUrl: canvas.toDataURL('image/png')
+      })
     });
 
     const payload = await response.json();
@@ -172,13 +188,21 @@ aiEditBtn.addEventListener('click', async () => {
       fitCanvasToImage(edited);
       setStatus('AI edit complete.');
     };
+    edited.onerror = () => setStatus('AI returned an unreadable image.', true);
     edited.src = payload.image;
   } catch (error) {
     setStatus(error.message || 'Unexpected AI edit error.', true);
+  } finally {
+    aiEditBtn.disabled = false;
   }
 });
 
 downloadBtn.addEventListener('click', () => {
+  if (!originalImageData) {
+    setStatus('Upload an image first.', true);
+    return;
+  }
+
   const link = document.createElement('a');
   link.download = 'ai-image-edit.png';
   link.href = canvas.toDataURL('image/png');

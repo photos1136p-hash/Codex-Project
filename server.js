@@ -1,39 +1,124 @@
-const express = require('express');
-const multer = require('multer');
+const http = require('http');
+const fs = require('fs/promises');
+const path = require('path');
 
-const app = express();
-const upload = multer({ storage: multer.memoryStorage() });
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const MAX_BODY_SIZE = 12 * 1024 * 1024; // 12MB JSON payload cap
 
-app.use(express.static('public'));
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon'
+};
 
-app.post('/api/ai-edit', upload.single('image'), async (req, res) => {
+function sendJson(res, statusCode, payload) {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(payload));
+}
+
+async function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let totalSize = 0;
+    const chunks = [];
+
+    req.on('data', (chunk) => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_BODY_SIZE) {
+        reject(new Error('Body is too large. Please use a smaller image.'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf-8');
+        resolve(JSON.parse(raw || '{}'));
+      } catch {
+        reject(new Error('Invalid JSON request body.'));
+      }
+    });
+
+    req.on('error', (err) => reject(err));
+  });
+}
+
+function parseDataUrl(imageDataUrl) {
+  const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(imageDataUrl || '');
+  if (!match) {
+    return null;
+  }
+
+  const mimeType = match[1];
+  const base64 = match[2];
+  return { mimeType, buffer: Buffer.from(base64, 'base64') };
+}
+
+async function serveStaticFile(req, res) {
+  const requestPath = new URL(req.url, `http://${req.headers.host}`).pathname;
+  const safePath = requestPath === '/' ? '/index.html' : requestPath;
+  const normalizedPath = path.normalize(safePath).replace(/^([.][.][/\\])+/, '');
+  const filePath = path.join(PUBLIC_DIR, normalizedPath);
+
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    sendJson(res, 403, { error: 'Forbidden path.' });
+    return;
+  }
+
   try {
-    const { prompt } = req.body;
-    const file = req.file;
+    const file = await fs.readFile(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+    res.end(file);
+  } catch {
+    sendJson(res, 404, { error: 'Not found.' });
+  }
+}
 
-    if (!file) {
-      return res.status(400).json({ error: 'Please upload an image.' });
-    }
+async function handleAiEdit(req, res) {
+  if (!process.env.OPENAI_API_KEY) {
+    sendJson(res, 500, { error: 'OPENAI_API_KEY is not configured on the server.' });
+    return;
+  }
 
-    if (!prompt || !prompt.trim()) {
-      return res.status(400).json({ error: 'Please add an edit prompt.' });
-    }
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: error.message });
+    return;
+  }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        error: 'OPENAI_API_KEY is not configured on the server.'
-      });
-    }
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+  const imageDataUrl = typeof body.imageDataUrl === 'string' ? body.imageDataUrl : '';
 
-    const formData = new FormData();
-    const blob = new Blob([file.buffer], { type: file.mimetype });
+  if (!prompt) {
+    sendJson(res, 400, { error: 'Please provide an edit prompt.' });
+    return;
+  }
 
-    formData.append('model', 'gpt-image-1');
-    formData.append('prompt', prompt);
-    formData.append('image', blob, file.originalname || 'upload.png');
+  const parsed = parseDataUrl(imageDataUrl);
+  if (!parsed || !parsed.buffer.length) {
+    sendJson(res, 400, { error: 'Please provide a valid base64 data URL image.' });
+    return;
+  }
 
-    const response = await fetch('https://api.openai.com/v1/images/edits', {
+  const formData = new FormData();
+  const imageBlob = new Blob([parsed.buffer], { type: parsed.mimeType });
+  formData.append('model', 'gpt-image-1');
+  formData.append('prompt', prompt);
+  formData.append('image', imageBlob, `input.${parsed.mimeType.split('/')[1] || 'png'}`);
+
+  try {
+    const aiResponse = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
@@ -41,30 +126,51 @@ app.post('/api/ai-edit', upload.single('image'), async (req, res) => {
       body: formData
     });
 
-    if (!response.ok) {
-      const details = await response.text();
-      return res.status(response.status).json({
+    const text = await aiResponse.text();
+    let payload = {};
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { raw: text };
+    }
+
+    if (!aiResponse.ok) {
+      sendJson(res, aiResponse.status, {
         error: 'Failed to generate AI edit.',
-        details
+        details: payload
       });
+      return;
     }
 
-    const payload = await response.json();
     const base64Image = payload?.data?.[0]?.b64_json;
-
     if (!base64Image) {
-      return res.status(502).json({ error: 'No edited image returned by AI API.' });
+      sendJson(res, 502, { error: 'AI response did not include an edited image.' });
+      return;
     }
 
-    return res.json({ image: `data:image/png;base64,${base64Image}` });
+    sendJson(res, 200, { image: `data:image/png;base64,${base64Image}` });
   } catch (error) {
-    return res.status(500).json({
+    sendJson(res, 500, {
       error: 'Unexpected server error while editing image.',
       details: error.message
     });
   }
+}
+
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'POST' && req.url === '/api/ai-edit') {
+    await handleAiEdit(req, res);
+    return;
+  }
+
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    await serveStaticFile(req, res);
+    return;
+  }
+
+  sendJson(res, 405, { error: 'Method not allowed.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`AI Image Editor running at http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`AI Image Studio running at http://localhost:${PORT}`);
 });
