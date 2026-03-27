@@ -38,6 +38,7 @@ footer {
 
 h1 {
   margin: 0 0 0.25rem;
+  line-height: 1.2;
 }
 
 p {
@@ -61,6 +62,8 @@ p {
 
 input[type='file'] {
   color: var(--muted);
+  inline-size: 100%;
+  min-inline-size: 0;
 }
 
 .tool-grid {
@@ -75,18 +78,25 @@ textarea {
   border: 1px solid #3d4a69;
   background: #1f2735;
   color: var(--text);
-  padding: 0.6rem 0.8rem;
+  padding: 0.7rem 0.9rem;
   font: inherit;
 }
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
+  min-height: 44px;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 button:hover {
   transform: translateY(-1px);
   border-color: var(--brand-2);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 button.primary {
@@ -102,7 +112,7 @@ button.secondary {
 
 textarea {
   resize: vertical;
-  min-height: 90px;
+  min-height: 100px;
 }
 
 #status {
@@ -116,6 +126,7 @@ textarea {
 
 canvas {
   max-width: 100%;
+  width: 100%;
   height: auto;
   border-radius: 10px;
   background: #0a0f19;
@@ -124,4 +135,48 @@ canvas {
 footer {
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .app {
+    width: 100%;
+    padding: env(safe-area-inset-top) 0.6rem env(safe-area-inset-bottom);
+    margin: 0;
+    gap: 0.75rem;
+  }
+
+  header,
+  .controls,
+  .canvas-wrap,
+  footer {
+    border-radius: 12px;
+    padding: 0.85rem;
+  }
+
+  h1 {
+    font-size: 1.35rem;
+  }
+
+  .upload {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tool-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  textarea {
+    min-height: 120px;
+    font-size: 16px;
+  }
+
+  footer {
+    justify-content: stretch;
+  }
+
+  #downloadBtn,
+  #aiEditBtn {
+    width: 100%;
+  }
 }

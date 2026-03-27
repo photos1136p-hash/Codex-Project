@@ -203,8 +203,16 @@ downloadBtn.addEventListener('click', () => {
     return;
   }
 
+  const imageUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');
   link.download = 'ai-image-edit.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  link.href = imageUrl;
+
+  if (typeof link.download === 'string') {
+    link.click();
+    return;
+  }
+
+  // iOS/Safari fallback where download attribute may be ignored.
+  window.open(imageUrl, '_blank', 'noopener,noreferrer');
 });
