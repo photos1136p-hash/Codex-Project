@@ -1,0 +1,17 @@
+{
+  "name": "AI Image Studio",
+  "short_name": "AI Studio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#10131a",
+  "theme_color": "#10131a",
+  "description": "AI-powered image editing designed for iPhone and mobile browsers.",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

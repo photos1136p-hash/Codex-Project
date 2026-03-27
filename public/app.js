@@ -1,3 +1,12 @@
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // App works without offline support.
+    });
+  });
+}
+
 const imageInput = document.getElementById('imageInput');
 const enhanceBtn = document.getElementById('enhanceBtn');
 const denoiseBtn = document.getElementById('denoiseBtn');
@@ -7,6 +16,7 @@ const aiEditBtn = document.getElementById('aiEditBtn');
 const promptInput = document.getElementById('promptInput');
 const statusEl = document.getElementById('status');
 const downloadBtn = document.getElementById('downloadBtn');
+const shareBtn = document.getElementById('shareBtn');
 
 const canvas = document.getElementById('editorCanvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -215,4 +225,40 @@ downloadBtn.addEventListener('click', () => {
 
   // iOS/Safari fallback where download attribute may be ignored.
   window.open(imageUrl, '_blank', 'noopener,noreferrer');
+});
+
+shareBtn.addEventListener('click', async () => {
+  if (!originalImageData) {
+    setStatus('Upload an image first.', true);
+    return;
+  }
+
+  if (!navigator.share) {
+    setStatus('Share is not available in this browser.', true);
+    return;
+  }
+
+  try {
+    const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
+    const file = new File([blob], 'ai-image-edit.png', { type: 'image/png' });
+
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+      setStatus('This browser cannot share image files.', true);
+      return;
+    }
+
+    await navigator.share({
+      title: 'AI Image Studio Edit',
+      text: 'Edited with AI Image Studio',
+      files: [file]
+    });
+
+    setStatus('Image shared successfully.');
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      setStatus('Share canceled.');
+      return;
+    }
+    setStatus('Unable to share the image.', true);
+  }
 });
