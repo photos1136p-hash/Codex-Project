@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#10131a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AI Studio" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>AI Image Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>AI Image Studio</h1>
+        <p>
+          Built for iPhone: upload from your camera roll, use quick AI-style edits,
+          and generate full prompt-based AI transformations.
+        </p>
+        <p class="hint">
+          Tip: In Safari tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to use this like an app.
+        </p>
+      </header>
+
+      <section class="controls">
+        <label class="upload">
+          <span>Upload image</span>
+          <input id="imageInput" type="file" accept="image/*" capture="environment" />
+        </label>
+
+        <div class="tool-grid">
+          <button id="enhanceBtn" type="button">Auto Enhance</button>
+          <button id="denoiseBtn" type="button">Denoise & Smooth</button>
+          <button id="dramaticBtn" type="button">Dramatic Relight</button>
+          <button id="resetBtn" type="button" class="secondary">Reset</button>
+        </div>
+
+        <label for="promptInput">AI prompt edit</label>
+        <textarea
+          id="promptInput"
+          rows="4"
+          placeholder="Example: Remove background and add a cinematic neon city at night."
+        ></textarea>
+
+        <button id="aiEditBtn" type="button" class="primary">Generate AI Edit</button>
+        <p id="status" role="status"></p>
+      </section>
+
+      <section class="canvas-wrap">
+        <canvas id="editorCanvas" width="1024" height="1024"></canvas>
+      </section>
+
+      <footer>
+        <button id="downloadBtn" type="button" class="secondary">Download PNG</button>
+        <button id="shareBtn" type="button" class="secondary">Share Image</button>
+      </footer>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
