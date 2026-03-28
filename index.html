@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Flux Playground • Mobile Physics Visualizer</title>
     <style>
       :root {
@@ -97,6 +97,10 @@
         padding: 12px;
       }
 
+      .canvas-wrap {
+        position: relative;
+      }
+
       canvas {
         display: block;
         width: 100%;
@@ -105,6 +109,20 @@
         background: radial-gradient(circle at 10% 10%, rgba(98, 246, 255, 0.08), transparent 40%),
           radial-gradient(circle at 90% 90%, rgba(255, 111, 198, 0.1), transparent 40%),
           linear-gradient(165deg, rgba(12, 17, 39, 0.85), rgba(4, 7, 18, 0.98));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        touch-action: none;
+        user-select: none;
+      }
+
+      .canvas-status {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        font-size: 0.75rem;
+        color: #b7c9e5;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: rgba(5, 9, 24, 0.65);
         border: 1px solid rgba(255, 255, 255, 0.12);
       }
 
@@ -121,7 +139,7 @@
         color: var(--text);
         font-weight: 600;
         border-radius: 14px;
-        min-height: 44px;
+        min-height: 46px;
         padding: 10px 12px;
         cursor: pointer;
         transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
@@ -195,7 +213,8 @@
         }
 
         canvas {
-          height: 54vh;
+          height: 52vh;
+          min-height: 300px;
         }
       }
 
@@ -216,12 +235,15 @@
         <span class="eyebrow">Mobile physics + graphics</span>
         <h1>Flux <span class="gradient">Physics Playground</span></h1>
         <p class="sub">
-          This single HTML file includes interactive particles, touch controls, gravity, wind, trails, slow motion, and live metrics. It is tuned for mobile and desktop.
+          Touch and drag in the black box to spawn and pull particles. This build prioritizes mobile Safari/Chrome behavior and responsive touch controls.
         </p>
 
         <div class="dashboard">
           <section class="sim-panel glass">
-            <canvas id="scene" aria-label="Physics visualization canvas"></canvas>
+            <div class="canvas-wrap">
+              <canvas id="scene" aria-label="Physics visualization canvas"></canvas>
+              <div id="canvasStatus" class="canvas-status">Ready</div>
+            </div>
 
             <div class="controls" aria-label="Simulation controls">
               <button id="btnBurst" type="button">✨ Add Burst</button>
@@ -240,12 +262,12 @@
             <article class="metric"><strong id="mEnergy">0</strong>Energy score</article>
             <article class="metric"><strong id="mFps">0</strong>Approx FPS</article>
             <ul class="tips">
-              <li>Tap/drag on canvas to attract particles.</li>
-              <li>Burst adds fresh particles at your touch point.</li>
-              <li>Wind alternates direction for richer motion.</li>
-              <li>Use slow motion for dramatic effects.</li>
+              <li>Tap once to create a burst.</li>
+              <li>Press + drag to pull particles with touch gravity.</li>
+              <li>Wind oscillates left/right to create wave motion.</li>
+              <li>Use Reset if the scene gets too busy.</li>
             </ul>
-            <p class="footer">Designed for phones: large touch targets, responsive layout, and smooth frame pacing.</p>
+            <p class="footer">Mobile-safe: `touch-action: none`, pointer capture, resize observer, and fallback if the context fails.</p>
           </aside>
         </div>
       </section>
@@ -254,7 +276,13 @@
     <script>
       (() => {
         const canvas = document.getElementById("scene");
-        const ctx = canvas.getContext("2d");
+        const statusEl = document.getElementById("canvasStatus");
+        const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+
+        if (!ctx) {
+          statusEl.textContent = "Canvas failed (2D context unavailable)";
+          return;
+        }
 
         const controls = {
           burst: document.getElementById("btnBurst"),
@@ -281,6 +309,7 @@
         ];
 
         let paletteIndex = 0;
+        let pointerId = null;
         const state = {
           particles: [],
           gravityOn: true,
@@ -291,19 +320,36 @@
           pointer: { x: 0, y: 0, active: false },
           lastFrameTs: performance.now(),
           fpsAvg: 60,
-          windPhase: 0
+          windPhase: 0,
+          ready: false
         };
 
         function random(min, max) {
           return Math.random() * (max - min) + min;
         }
 
-        function resize() {
-          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        function resize(forceSeed = false) {
           const rect = canvas.getBoundingClientRect();
-          canvas.width = Math.floor(rect.width * dpr);
-          canvas.height = Math.floor(rect.height * dpr);
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          if (rect.width < 10 || rect.height < 10) {
+            statusEl.textContent = "Waiting for canvas layout…";
+            return false;
+          }
+
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const width = Math.floor(rect.width * dpr);
+          const height = Math.floor(rect.height * dpr);
+
+          if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            if (forceSeed) {
+              seed(Math.max(80, Math.floor(rect.width * 0.2)));
+            }
+          }
+
+          statusEl.textContent = "Live";
+          return true;
         }
 
         function createParticle(x = random(0, canvas.clientWidth), y = random(0, canvas.clientHeight), burst = false) {
@@ -311,23 +357,29 @@
           return {
             x,
             y,
-            vx: random(-1.4, 1.4) * (burst ? 2.2 : 1),
-            vy: random(-1.6, 1.6) * (burst ? 2.2 : 1),
-            radius: random(2.8, burst ? 6.8 : 5.6),
+            vx: random(-1.6, 1.6) * (burst ? 2.4 : 1),
+            vy: random(-1.7, 1.7) * (burst ? 2.4 : 1),
+            radius: random(3.8, burst ? 8.5 : 7.2),
             color: colors[(Math.random() * colors.length) | 0],
-            life: random(220, 520),
-            glow: random(8, 18)
+            life: random(300, 700),
+            glow: random(14, 26)
           };
         }
 
-        function seed(count = 95) {
+        function seed(count = 100) {
           state.particles = Array.from({ length: count }, () => createParticle());
         }
 
         function addBurst(cx = canvas.clientWidth * 0.5, cy = canvas.clientHeight * 0.5) {
-          for (let i = 0; i < 34; i++) {
+          for (let i = 0; i < 44; i++) {
             state.particles.push(createParticle(cx, cy, true));
           }
+        }
+
+        function pointerFromEvent(event) {
+          const rect = canvas.getBoundingClientRect();
+          state.pointer.x = event.clientX - rect.left;
+          state.pointer.y = event.clientY - rect.top;
         }
 
         function bindControls() {
@@ -368,72 +420,58 @@
 
           controls.color.addEventListener("click", () => {
             paletteIndex = (paletteIndex + 1) % palettes.length;
+            const palette = palettes[paletteIndex];
             state.particles.forEach((p) => {
-              const palette = palettes[paletteIndex];
               p.color = palette[(Math.random() * palette.length) | 0];
             });
           });
 
           controls.reset.addEventListener("click", () => {
-            seed(95);
+            seed(100);
           });
 
-          const updatePointer = (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const point = event.touches ? event.touches[0] : event;
-            state.pointer.x = point.clientX - rect.left;
-            state.pointer.y = point.clientY - rect.top;
-          };
-
           canvas.addEventListener("pointerdown", (event) => {
+            pointerId = event.pointerId;
+            canvas.setPointerCapture(pointerId);
             state.pointer.active = true;
-            updatePointer(event);
+            pointerFromEvent(event);
             addBurst(state.pointer.x, state.pointer.y);
           });
 
           canvas.addEventListener("pointermove", (event) => {
             if (!state.pointer.active) return;
-            updatePointer(event);
+            pointerFromEvent(event);
           });
 
-          window.addEventListener("pointerup", () => {
+          const releasePointer = () => {
+            if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+              canvas.releasePointerCapture(pointerId);
+            }
+            pointerId = null;
+            state.pointer.active = false;
+          };
+
+          canvas.addEventListener("pointerup", releasePointer);
+          canvas.addEventListener("pointercancel", releasePointer);
+          canvas.addEventListener("pointerleave", () => {
+            if (!state.pointer.active) return;
             state.pointer.active = false;
           });
-
-          canvas.addEventListener(
-            "touchstart",
-            (event) => {
-              state.pointer.active = true;
-              updatePointer(event);
-              addBurst(state.pointer.x, state.pointer.y);
-            },
-            { passive: true }
-          );
-
-          canvas.addEventListener(
-            "touchmove",
-            (event) => {
-              updatePointer(event);
-            },
-            { passive: true }
-          );
-
-          window.addEventListener("resize", resize);
         }
 
         function update(dt) {
-          const gravity = state.gravityOn ? 0.04 : 0;
-          state.windPhase += dt * 0.0015;
-          const wind = state.windOn ? Math.sin(state.windPhase) * 0.03 : 0;
+          const gravity = state.gravityOn ? 0.052 : 0;
+          state.windPhase += dt * 0.0018;
+          const wind = state.windOn ? Math.sin(state.windPhase) * 0.035 : 0;
 
-          const pointerPull = state.pointer.active ? 0.03 : 0;
+          const pointerPull = state.pointer.active ? 0.042 : 0;
 
           for (const p of state.particles) {
             if (pointerPull) {
               const dx = state.pointer.x - p.x;
               const dy = state.pointer.y - p.y;
-              const distSq = dx * dx + dy * dy + 0.001;
-              const force = Math.min(120 / distSq, 0.35);
+              const distSq = dx * dx + dy * dy + 16;
+              const force = Math.min(140 / distSq, 0.33);
               p.vx += dx * force * pointerPull;
               p.vy += dy * force * pointerPull;
             }
@@ -459,24 +497,24 @@
               p.vy *= -0.88;
             } else if (p.y > canvas.clientHeight - p.radius) {
               p.y = canvas.clientHeight - p.radius;
-              p.vy *= -0.86;
+              p.vy *= -0.84;
             }
           }
 
           state.particles = state.particles.filter((p) => p.life > 0);
 
-          while (state.particles.length < 70) {
+          while (state.particles.length < 80) {
             state.particles.push(createParticle());
           }
 
-          if (state.particles.length > 260) {
-            state.particles.splice(0, state.particles.length - 260);
+          if (state.particles.length > 320) {
+            state.particles.splice(0, state.particles.length - 320);
           }
         }
 
         function draw() {
           if (state.trailsOn) {
-            ctx.fillStyle = "rgba(6, 9, 20, 0.25)";
+            ctx.fillStyle = "rgba(6, 9, 20, 0.2)";
             ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
           } else {
             ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
@@ -517,7 +555,7 @@
           state.lastFrameTs = now;
           const step = Math.min(elapsed, 32) * (state.slowOn ? 0.45 : 1);
 
-          if (!state.paused) {
+          if (state.ready && !state.paused) {
             update(step * 0.06);
             draw();
             updateMetrics(elapsed);
@@ -526,13 +564,43 @@
           requestAnimationFrame(tick);
         }
 
-        resize();
-        seed();
-        bindControls();
-        requestAnimationFrame((ts) => {
-          state.lastFrameTs = ts;
-          tick(ts);
-        });
+        function init() {
+          state.ready = resize(true);
+          if (!state.ready) {
+            let tries = 0;
+            const probe = () => {
+              tries += 1;
+              state.ready = resize(true);
+              if (!state.ready && tries < 20) {
+                requestAnimationFrame(probe);
+              }
+            };
+            requestAnimationFrame(probe);
+          }
+
+          if ("ResizeObserver" in window) {
+            const ro = new ResizeObserver(() => {
+              resize(false);
+            });
+            ro.observe(canvas);
+          } else {
+            window.addEventListener("resize", () => resize(false));
+          }
+
+          bindControls();
+          seed(100);
+
+          requestAnimationFrame((ts) => {
+            state.lastFrameTs = ts;
+            tick(ts);
+          });
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", init, { once: true });
+        } else {
+          init();
+        }
       })();
     </script>
   </body>
