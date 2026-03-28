@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Files-Safe Flux Visual</title>
+    <style>
+      :root {
+        --bg0: #050816;
+        --bg1: #101c44;
+        --bg2: #2b145a;
+        --text: #eaf7ff;
+        --muted: #b4c8e4;
+        --cyan: #67f4ff;
+        --violet: #a27cff;
+        --pink: #ff76c8;
+        --green: #9dffb2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 15% 5%, #26458c 0%, transparent 40%),
+          radial-gradient(circle at 85% 95%, #3f185f 0%, transparent 40%),
+          linear-gradient(145deg, var(--bg0), var(--bg1), var(--bg2));
+      }
+
+      .app {
+        width: min(980px, 94vw);
+        margin-inline: auto;
+        padding: 16px 0 28px;
+      }
+
+      .panel {
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: linear-gradient(160deg, rgba(18, 30, 70, 0.78), rgba(6, 12, 27, 0.9));
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(12px);
+        padding: clamp(16px, 4vw, 30px);
+      }
+
+      .tag {
+        display: inline-block;
+        font-size: 0.74rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 6px 11px;
+        border-radius: 999px;
+        border: 1px solid rgba(103, 244, 255, 0.5);
+        color: var(--cyan);
+        background: rgba(103, 244, 255, 0.1);
+      }
+
+      h1 {
+        margin: 12px 0 8px;
+        font-size: clamp(1.65rem, 7vw, 3.2rem);
+        line-height: 1.08;
+      }
+
+      .gradient {
+        background: linear-gradient(90deg, var(--cyan), var(--pink));
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .sub {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .hint {
+        margin: 10px 0 0;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 10px 12px;
+        color: #d6e8ff;
+        font-size: 0.88rem;
+      }
+
+      .layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 14px;
+      }
+
+      .visual-wrap {
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        background: rgba(0, 0, 0, 0.2);
+        padding: 10px;
+      }
+
+      .scene {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        height: min(56vh, 520px);
+        min-height: 300px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: radial-gradient(circle at 12% 15%, rgba(103, 244, 255, 0.15), transparent 38%),
+          radial-gradient(circle at 88% 84%, rgba(255, 118, 200, 0.2), transparent 38%),
+          linear-gradient(165deg, #091330, #030818);
+      }
+
+      .scene.interactive {
+        touch-action: none;
+        cursor: crosshair;
+      }
+
+      .noise {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+        background-size: 4px 4px;
+        opacity: 0.05;
+      }
+
+      .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(1px) saturate(140%);
+      }
+
+      .orb.a {
+        width: 48px;
+        height: 48px;
+        background: var(--cyan);
+        left: 15%;
+        top: 62%;
+        animation: floatA 6s ease-in-out infinite;
+      }
+
+      .orb.b {
+        width: 42px;
+        height: 42px;
+        background: var(--pink);
+        left: 58%;
+        top: 34%;
+        animation: floatB 8s ease-in-out infinite;
+      }
+
+      .orb.c {
+        width: 36px;
+        height: 36px;
+        background: var(--violet);
+        left: 72%;
+        top: 70%;
+        animation: floatC 7s ease-in-out infinite;
+      }
+
+      .orb.d {
+        width: 28px;
+        height: 28px;
+        background: var(--green);
+        left: 32%;
+        top: 42%;
+        animation: floatD 9s ease-in-out infinite;
+      }
+
+      .trail {
+        position: absolute;
+        inset: 0;
+        background: conic-gradient(from 140deg at 30% 65%, rgba(103, 244, 255, 0.14), transparent 22%, rgba(255, 118, 200, 0.15), transparent 60%);
+        mix-blend-mode: screen;
+        animation: spin 18s linear infinite;
+      }
+
+      .touch-dot {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(103, 244, 255, 0.7) 45%, rgba(103, 244, 255, 0) 70%);
+        filter: blur(0.4px) saturate(150%);
+        animation: fadeTrail 560ms ease-out forwards;
+      }
+
+      @keyframes fadeTrail {
+        from {
+          opacity: 0.95;
+          width: 18px;
+          height: 18px;
+        }
+        to {
+          opacity: 0;
+          width: 4px;
+          height: 4px;
+        }
+      }
+
+      .controls {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .mode-toggle {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .controls label,
+      .link-btn {
+        display: block;
+        text-align: center;
+        border-radius: 13px;
+        min-height: 44px;
+        padding: 11px 10px;
+        font-weight: 600;
+        text-decoration: none;
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: linear-gradient(160deg, rgba(103, 244, 255, 0.16), rgba(162, 124, 255, 0.1));
+      }
+
+      #gravity:checked ~ .scene .orb {
+        animation-duration: 3.8s;
+      }
+
+      #wind:checked ~ .scene .orb {
+        animation-name: sway;
+      }
+
+      #burst:checked ~ .scene .orb {
+        transform: scale(1.45);
+      }
+
+      #glow:checked ~ .scene .orb {
+        box-shadow: 0 0 30px currentColor;
+      }
+
+      #trails:checked ~ .scene .trail {
+        opacity: 0;
+      }
+
+      #gravity:checked ~ .controls label[for="gravity"],
+      #wind:checked ~ .controls label[for="wind"],
+      #burst:checked ~ .controls label[for="burst"],
+      #glow:checked ~ .controls label[for="glow"],
+      #trails:checked ~ .controls label[for="trails"] {
+        border-color: rgba(157, 255, 178, 0.7);
+        box-shadow: inset 0 0 0 1px rgba(157, 255, 178, 0.45);
+      }
+
+      .stats {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+      }
+
+      .stat {
+        border-radius: 13px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 11px;
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 1.25rem;
+      }
+
+      .stat p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .steps {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      .steps li {
+        margin-bottom: 6px;
+      }
+
+      @keyframes floatA {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(18px, -30px); }
+      }
+
+      @keyframes floatB {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(-16px, 22px); }
+      }
+
+      @keyframes floatC {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(-22px, -26px); }
+      }
+
+      @keyframes floatD {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(22px, 20px); }
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes sway {
+        0%,
+        100% { transform: translate(0, 0); }
+        25% { transform: translate(-18px, 10px); }
+        75% { transform: translate(18px, -12px); }
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .orb,
+        .trail {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <span class="tag">Files-App Compatible</span>
+        <h1>Flux <span class="gradient">Visual Mode</span></h1>
+        <p class="sub">This version is built to work directly in iPhone Files preview and now adds optional touch-trail interactivity when scripts are available.</p>
+        <p class="hint">Drag your finger in the black box to paint a glowing trail, then use the buttons to switch visual effects.</p>
+
+        <section class="layout">
+          <article class="visual-wrap">
+            <input class="mode-toggle" id="gravity" type="checkbox" />
+            <input class="mode-toggle" id="wind" type="checkbox" />
+            <input class="mode-toggle" id="burst" type="checkbox" />
+            <input class="mode-toggle" id="glow" type="checkbox" />
+            <input class="mode-toggle" id="trails" type="checkbox" />
+
+            <div class="controls" aria-label="Visual controls">
+              <label for="gravity">🌍 Gravity Boost</label>
+              <label for="wind">💨 Wind Mode</label>
+              <label for="burst">✨ Burst Size</label>
+              <label for="glow">💡 Neon Glow</label>
+              <label for="trails">🌈 Hide Trails</label>
+
+              <a class="link-btn" href="index.html">♻️ Reset View</a>
+            </div>
+
+            <div class="scene" aria-label="Pure CSS animated visual">
+              <div class="noise"></div>
+              <div class="trail"></div>
+              <div class="orb a"></div>
+              <div class="orb b"></div>
+              <div class="orb c"></div>
+              <div class="orb d"></div>
+            </div>
+          </article>
+
+          <aside class="stats">
+            <article class="stat">
+              <strong>Touch Trail</strong>
+              <p>Finger movement now draws a glowing live trail.</p>
+            </article>
+            <article class="stat">
+              <strong>Touch Ready</strong>
+              <p>Big tap targets for one-handed mobile use.</p>
+            </article>
+            <article class="stat">
+              <strong>Instant</strong>
+              <p>Loads as a single file with no external assets.</p>
+            </article>
+            <article class="stat">
+              <strong>How to use</strong>
+              <ol class="steps">
+                <li>Tap any mode button.</li>
+                <li>Watch the visual change instantly.</li>
+                <li>Tap Reset View to return to default.</li>
+              </ol>
+            </article>
+          </aside>
+        </section>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const scene = document.querySelector(".scene");
+        if (!scene) return;
+        scene.classList.add("interactive");
+
+        const colors = ["#67f4ff", "#ff76c8", "#a27cff", "#9dffb2"];
+        let active = false;
+        let lastStamp = 0;
+
+        function spawnDot(x, y) {
+          const dot = document.createElement("span");
+          dot.className = "touch-dot";
+          dot.style.left = `${x}px`;
+          dot.style.top = `${y}px`;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          dot.style.background = `radial-gradient(circle, rgba(255,255,255,0.95), ${color} 45%, rgba(0,0,0,0) 70%)`;
+          scene.appendChild(dot);
+          dot.addEventListener("animationend", () => dot.remove(), { once: true });
+        }
+
+        function pointerPos(event) {
+          const rect = scene.getBoundingClientRect();
+          return {
+            x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+            y: Math.max(0, Math.min(rect.height, event.clientY - rect.top))
+          };
+        }
+
+        scene.addEventListener("pointerdown", (event) => {
+          active = true;
+          scene.setPointerCapture(event.pointerId);
+          const p = pointerPos(event);
+          spawnDot(p.x, p.y);
+        });
+
+        scene.addEventListener("pointermove", (event) => {
+          if (!active) return;
+          const now = performance.now();
+          if (now - lastStamp < 16) return;
+          lastStamp = now;
+          const p = pointerPos(event);
+          spawnDot(p.x, p.y);
+        });
+
+        const release = () => {
+          active = false;
+        };
+        scene.addEventListener("pointerup", release);
+        scene.addEventListener("pointercancel", release);
+        scene.addEventListener("pointerleave", release);
+      })();
+    </script>
+  </body>
+</html>
