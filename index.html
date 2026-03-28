@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon Pulse Experience</title>
+    <style>
+      :root {
+        --bg: #070b1a;
+        --bg-soft: #101935;
+        --text: #e8f4ff;
+        --muted: #a8bcd8;
+        --accent-a: #78f9ff;
+        --accent-b: #9f7bff;
+        --accent-c: #ff7fd1;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 20% 20%, #1b2a52 0, transparent 40%),
+          radial-gradient(circle at 80% 0%, #351d54 0, transparent 35%),
+          radial-gradient(circle at 50% 100%, #11244d 0, transparent 50%),
+          var(--bg);
+        overflow-x: hidden;
+      }
+
+      .mesh {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: -1;
+        filter: blur(34px) saturate(150%);
+      }
+
+      .blob {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.65;
+        animation: drift 18s ease-in-out infinite;
+      }
+
+      .blob:nth-child(1) {
+        width: 180px;
+        height: 180px;
+        background: var(--accent-a);
+        top: 8%;
+        left: 4%;
+      }
+
+      .blob:nth-child(2) {
+        width: 210px;
+        height: 210px;
+        background: var(--accent-b);
+        top: 55%;
+        left: 65%;
+        animation-delay: -6s;
+      }
+
+      .blob:nth-child(3) {
+        width: 150px;
+        height: 150px;
+        background: var(--accent-c);
+        top: 30%;
+        left: 72%;
+        animation-delay: -12s;
+      }
+
+      @keyframes drift {
+        0%,
+        100% {
+          transform: translate3d(0, 0, 0) scale(1);
+        }
+        35% {
+          transform: translate3d(25px, -28px, 0) scale(1.18);
+        }
+        70% {
+          transform: translate3d(-22px, 20px, 0) scale(0.88);
+        }
+      }
+
+      .container {
+        width: min(980px, 92vw);
+        margin-inline: auto;
+        padding: 24px 0 48px;
+      }
+
+      .hero {
+        margin-top: 8px;
+        padding: clamp(22px, 5vw, 42px);
+        border-radius: 26px;
+        background: linear-gradient(160deg, rgba(16, 25, 53, 0.9), rgba(5, 10, 22, 0.82));
+        border: 1px solid rgba(168, 188, 216, 0.2);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(14px);
+      }
+
+      .pill {
+        width: fit-content;
+        border: 1px solid rgba(120, 249, 255, 0.55);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent-a);
+        background: rgba(120, 249, 255, 0.1);
+      }
+
+      h1 {
+        margin: 14px 0 10px;
+        line-height: 1.05;
+        font-size: clamp(1.9rem, 6.2vw, 4rem);
+        letter-spacing: -0.03em;
+      }
+
+      .gradient-text {
+        background: linear-gradient(90deg, var(--accent-a), var(--accent-c));
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .subtitle {
+        margin: 0;
+        max-width: 58ch;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: clamp(0.95rem, 2.6vw, 1.13rem);
+      }
+
+      .stats {
+        margin-top: 26px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .stat-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .stat-card strong {
+        display: block;
+        font-size: 1.35rem;
+      }
+
+      .visual-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .tile {
+        border-radius: 20px;
+        min-height: 130px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: linear-gradient(155deg, rgba(120, 249, 255, 0.16), rgba(159, 123, 255, 0.07));
+      }
+
+      .tile:nth-child(2) {
+        background: linear-gradient(140deg, rgba(255, 127, 209, 0.18), rgba(120, 249, 255, 0.09));
+      }
+
+      .tile h2 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .tile p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .wave {
+        margin-top: 26px;
+        height: 6px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent-a), var(--accent-b), var(--accent-c));
+        background-size: 220% 100%;
+        animation: slide 4.2s linear infinite;
+      }
+
+      @keyframes slide {
+        0% {
+          background-position: 0% 50%;
+        }
+        100% {
+          background-position: 220% 50%;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .container {
+          padding-top: 14px;
+        }
+
+        .hero {
+          border-radius: 20px;
+          padding: 18px;
+        }
+
+        .stats {
+          grid-template-columns: 1fr;
+        }
+
+        .visual-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .blob,
+        .wave {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mesh" aria-hidden="true">
+      <div class="blob"></div>
+      <div class="blob"></div>
+      <div class="blob"></div>
+    </div>
+
+    <main class="container">
+      <section class="hero">
+        <span class="pill">Mobile-First Visual</span>
+        <h1>
+          A <span class="gradient-text">cool visual experience</span>
+          in one HTML file
+        </h1>
+        <p class="subtitle">
+          Smooth gradients, glowing cards, and adaptive layouts make this page feel modern and punchy on phones while still looking sharp on larger screens.
+        </p>
+
+        <div class="stats">
+          <article class="stat-card">
+            <strong>60fps</strong>
+            Lightweight motion tuned for mobile devices.
+          </article>
+          <article class="stat-card">
+            <strong>1 file</strong>
+            No frameworks, just clean HTML and CSS.
+          </article>
+          <article class="stat-card">
+            <strong>100%</strong>
+            Responsive layout with touch-friendly spacing.
+          </article>
+        </div>
+
+        <div class="visual-grid">
+          <article class="tile">
+            <h2>Gradient Glass</h2>
+            <p>Soft transparent surfaces with glow depth create a futuristic interface style.</p>
+          </article>
+          <article class="tile">
+            <h2>Readable & Bold</h2>
+            <p>High-contrast typography and clear hierarchy keeps visuals stylish but usable.</p>
+          </article>
+        </div>
+
+        <div class="wave" aria-hidden="true"></div>
+      </section>
+    </main>
+  </body>
+</html>
