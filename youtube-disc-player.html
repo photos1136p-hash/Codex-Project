@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Disc Player</title>
+  <style>
+    :root {
+      --bg-1: #0f1020;
+      --bg-2: #1e1238;
+      --accent: #a855f7;
+      --accent-2: #22d3ee;
+      --text: #eff0ff;
+      --muted: #a9a8c6;
+      --panel: rgba(15, 16, 32, 0.68);
+      --ok: #2dd4bf;
+      --err: #fb7185;
+      --warning: #facc15;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 15%, rgba(34, 211, 238, 0.18), transparent 40%),
+        radial-gradient(circle at 85% 25%, rgba(168, 85, 247, 0.24), transparent 42%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .stars,
+    .stars::before,
+    .stars::after {
+      position: fixed;
+      inset: -10%;
+      content: "";
+      pointer-events: none;
+      background-image:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.35), transparent),
+        radial-gradient(1.5px 1.5px at 70% 80%, rgba(255,255,255,.22), transparent),
+        radial-gradient(1.5px 1.5px at 40% 60%, rgba(255,255,255,.2), transparent),
+        radial-gradient(2px 2px at 90% 20%, rgba(255,255,255,.18), transparent);
+      animation: drift 28s linear infinite;
+    }
+    .stars::before { transform: scale(1.2) rotate(30deg); animation-duration: 42s; opacity: .65; }
+    .stars::after { transform: scale(1.35) rotate(-25deg); animation-duration: 52s; opacity: .5; }
+
+    @keyframes drift {
+      from { transform: translateY(0); }
+      to { transform: translateY(-120px); }
+    }
+
+    .app {
+      width: min(980px, 92vw);
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      padding: clamp(18px, 3vw, 32px);
+      backdrop-filter: blur(18px);
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.35),
+        inset 0 1px rgba(255,255,255,0.1);
+      position: relative;
+      z-index: 2;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 3vw, 2.3rem);
+      letter-spacing: 0.5px;
+    }
+
+    p.sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    input[type="url"] {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.3);
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 0.98rem;
+      line-height: 1.35;
+      letter-spacing: .2px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      color: #0b0620;
+      font-weight: 700;
+      padding: 13px 16px;
+      cursor: pointer;
+      transition: transform .16s ease, filter .16s ease;
+    }
+    button:hover { transform: translateY(-1px); filter: brightness(1.1); }
+    button:active { transform: translateY(1px); }
+
+    .hint { color: var(--muted); margin: 6px 0 16px; font-size: .93rem; }
+
+    .status {
+      min-height: 1.4em;
+      margin: 0 0 16px;
+      font-size: .95rem;
+      color: var(--warning);
+    }
+    .status.ok { color: var(--ok); }
+    .status.error { color: var(--err); }
+
+    #hiddenPlayer {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 320px;
+      height: 180px;
+      opacity: 0.01;
+      pointer-events: none;
+    }
+
+    .stage {
+      margin-top: 10px;
+      min-height: 300px;
+      display: grid;
+      place-items: end center;
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background:
+        radial-gradient(circle at 50% 80%, rgba(34, 211, 238, 0.09), transparent 60%),
+        linear-gradient(to bottom, rgba(255,255,255,0.03), rgba(0,0,0,0.25));
+      padding: 18px;
+    }
+
+    .equalizer {
+      position: absolute;
+      inset: auto 12% 20px;
+      height: 84px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 5px;
+      pointer-events: none;
+      opacity: 0.9;
+      filter: drop-shadow(0 0 10px rgba(168, 85, 247, .45));
+    }
+
+    .bar {
+      width: 7px;
+      border-radius: 999px;
+      background: linear-gradient(to top, var(--accent), var(--accent-2));
+      height: 8%;
+      transform-origin: bottom;
+      transform: scaleY(0.2);
+      transition: transform .18s linear;
+    }
+
+    .disc-wrap {
+      position: relative;
+      width: min(340px, 68vw);
+      aspect-ratio: 1;
+      margin-bottom: -18px;
+    }
+
+    .aura {
+      position: absolute;
+      inset: -14%;
+      border-radius: 50%;
+      background:
+        conic-gradient(from 0deg, rgba(34,211,238,.45), rgba(168,85,247,.4), rgba(34,211,238,.45));
+      filter: blur(22px);
+      opacity: .3;
+      transform: scale(0.8);
+      transition: transform .6s ease, opacity .6s ease;
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    .disc {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 54% 46%, rgba(255,255,255,.28), rgba(255,255,255,0) 32%),
+        repeating-radial-gradient(circle at center,
+          rgba(255,255,255,.04) 0 2px,
+          rgba(0,0,0,.14) 2px 4px),
+        #141226;
+      border: 3px solid rgba(255,255,255,.12);
+      box-shadow:
+        inset -12px -18px 30px rgba(0,0,0,.45),
+        inset 12px 12px 25px rgba(255,255,255,.06),
+        0 18px 30px rgba(0,0,0,.45);
+      overflow: hidden;
+      transform: rotate(0deg);
+      transition: transform .2s linear;
+    }
+
+    .disc::after {
+      content: "";
+      position: absolute;
+      inset: 42% 42%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #d4d2e8, #7c7996 70%);
+      box-shadow: 0 0 0 5px rgba(0,0,0,.32), inset 0 0 0 2px rgba(255,255,255,.35);
+    }
+
+    .cover {
+      position: absolute;
+      inset: 12%;
+      border-radius: 50%;
+      object-fit: cover;
+      width: 76%;
+      height: 76%;
+      filter: saturate(1.1) contrast(1.03);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .playing .disc { animation: spin 2.25s linear infinite; }
+    .playing .aura { opacity: .95; transform: scale(1.02); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse {
+      0%, 100% { opacity: .45; }
+      50% { opacity: .95; }
+    }
+
+    .meta {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .9rem;
+      color: var(--muted);
+      gap: 8px;
+    }
+
+    .chip {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      padding: 6px 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 65%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (max-width: 680px) {
+      .input-row { grid-template-columns: 1fr; }
+      button { width: 100%; }
+      .equalizer { inset-inline: 6%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+
+  <main class="app">
+    <h1>🎧 YouTube Disc Player</h1>
+    <p class="sub">Paste a full YouTube URL (it won’t clip). Click play to load audio into the disc player at the bottom.</p>
+
+    <div class="input-row">
+      <input id="urlInput" type="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
+      <button id="playBtn" type="button">Load &amp; Play</button>
+    </div>
+
+    <p class="hint">Tip: Works with <code>youtube.com/watch?v=...</code>, <code>youtu.be/...</code>, and <code>/shorts/...</code> links.</p>
+    <p id="status" class="status">Ready.</p>
+    <button id="resumeBtn" type="button" hidden>Tap to Resume Audio</button>
+
+    <div id="hiddenPlayer"></div>
+
+    <section class="stage" id="stage">
+      <div class="meta">
+        <div class="chip" id="videoIdChip">No video loaded</div>
+        <div class="chip" id="stateChip">Idle</div>
+      </div>
+
+      <div class="equalizer" id="equalizer" aria-hidden="true"></div>
+
+      <div class="disc-wrap">
+        <div class="aura"></div>
+        <div class="disc" id="disc">
+          <img id="cover" class="cover" src="" alt="Video cover art" hidden />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    const urlInput = document.getElementById('urlInput');
+    const playBtn = document.getElementById('playBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const statusEl = document.getElementById('status');
+    const stage = document.getElementById('stage');
+    const videoIdChip = document.getElementById('videoIdChip');
+    const stateChip = document.getElementById('stateChip');
+    const cover = document.getElementById('cover');
+    const equalizer = document.getElementById('equalizer');
+
+    let player = null;
+    let apiReady = false;
+    let eqTimer = null;
+    let fallbackTimer = null;
+
+    for (let i = 0; i < 30; i += 1) {
+      const bar = document.createElement('span');
+      bar.className = 'bar';
+      equalizer.appendChild(bar);
+    }
+
+    function setStatus(message, type = '') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`.trim();
+    }
+
+    function showResumeButton(show) {
+      resumeBtn.hidden = !show;
+    }
+
+    function extractYouTubeId(input) {
+      try {
+        const url = new URL(input.trim());
+        const host = url.hostname.replace(/^www\./, '');
+
+        if (host === 'youtu.be') {
+          return url.pathname.split('/').filter(Boolean)[0] || null;
+        }
+
+        if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+          if (url.pathname === '/watch') {
+            return url.searchParams.get('v');
+          }
+
+          if (url.pathname.startsWith('/shorts/')) {
+            return url.pathname.split('/')[2] || null;
+          }
+
+          if (url.pathname.startsWith('/embed/')) {
+            return url.pathname.split('/')[2] || null;
+          }
+        }
+      } catch (_err) {
+        return null;
+      }
+      return null;
+    }
+
+    function setCover(videoId) {
+      const high = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+      const fallback = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+      cover.onerror = () => {
+        if (cover.src !== fallback) {
+          cover.src = fallback;
+        }
+      };
+      cover.src = high;
+      cover.hidden = false;
+    }
+
+    function startEqualizer() {
+      stopEqualizer();
+      const bars = [...equalizer.children];
+      eqTimer = setInterval(() => {
+        for (const bar of bars) {
+          const value = 0.2 + Math.random() * 1.8;
+          bar.style.transform = `scaleY(${value})`;
+        }
+      }, 120);
+    }
+
+    function stopEqualizer() {
+      if (eqTimer) {
+        clearInterval(eqTimer);
+        eqTimer = null;
+      }
+      [...equalizer.children].forEach((bar) => {
+        bar.style.transform = 'scaleY(0.2)';
+      });
+    }
+
+    function onPlayerStateChange(event) {
+      const YTState = window.YT?.PlayerState;
+      if (!YTState) return;
+
+      if (event.data === YTState.PLAYING) {
+        stage.classList.add('playing');
+        stateChip.textContent = 'Playing';
+        startEqualizer();
+        showResumeButton(false);
+        setStatus('Playing audio from YouTube.', 'ok');
+      } else if (event.data === YTState.PAUSED) {
+        stage.classList.remove('playing');
+        stateChip.textContent = 'Paused';
+        stopEqualizer();
+        setStatus('Paused.', '');
+      } else if (event.data === YTState.ENDED) {
+        stage.classList.remove('playing');
+        stateChip.textContent = 'Ended';
+        stopEqualizer();
+        setStatus('Playback ended.', '');
+      } else if (event.data === YTState.BUFFERING) {
+        stateChip.textContent = 'Buffering';
+        setStatus('Buffering stream…', '');
+      } else if (event.data === YTState.UNSTARTED) {
+        stateChip.textContent = 'Ready';
+      }
+    }
+
+    function attemptPlayback() {
+      if (!player) return;
+      try {
+        player.unMute();
+        player.setVolume(100);
+        player.playVideo();
+      } catch (_err) {
+        // ignored; onError/onStateChange handles UX
+      }
+    }
+
+    function loadVideoByUrl() {
+      if (!apiReady) {
+        setStatus('YouTube API not ready yet, please wait a second…');
+        return;
+      }
+
+      const input = urlInput.value.trim();
+      const id = extractYouTubeId(input);
+
+      if (!id) {
+        setStatus('That does not look like a valid YouTube URL.', 'error');
+        return;
+      }
+
+      videoIdChip.textContent = `Video ID: ${id}`;
+      stateChip.textContent = 'Loading';
+      setCover(id);
+      showResumeButton(false);
+
+      if (!player) {
+        player = new YT.Player('hiddenPlayer', {
+          width: '320',
+          height: '180',
+          videoId: id,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            fs: 0,
+            playsinline: 1
+          },
+          events: {
+            onReady: (ev) => {
+              ev.target.setVolume(100);
+              ev.target.unMute();
+              ev.target.playVideo();
+              setStatus('Loaded. Attempting to play audio…', 'ok');
+            },
+            onStateChange: onPlayerStateChange,
+            onError: () => {
+              setStatus('YouTube refused this video for embedded playback.', 'error');
+              stage.classList.remove('playing');
+              stopEqualizer();
+              stateChip.textContent = 'Error';
+            }
+          }
+        });
+      } else {
+        player.loadVideoById(id);
+        attemptPlayback();
+        setStatus('Loading new video…', 'ok');
+      }
+
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(() => {
+        const state = player?.getPlayerState?.();
+        if (state !== window.YT?.PlayerState?.PLAYING) {
+          showResumeButton(true);
+          setStatus('Autoplay may be blocked. Tap “Resume Audio”.', 'error');
+        }
+      }, 1800);
+    }
+
+    playBtn.addEventListener('click', loadVideoByUrl);
+    resumeBtn.addEventListener('click', () => {
+      attemptPlayback();
+      setStatus('Trying playback again…', 'ok');
+    });
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadVideoByUrl();
+      }
+    });
+
+    window.onYouTubeIframeAPIReady = () => {
+      apiReady = true;
+      setStatus('YouTube API ready. Paste a link and hit play.', 'ok');
+    };
+  </script>
+</body>
+</html>
