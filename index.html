@@ -112,6 +112,11 @@
           linear-gradient(165deg, #091330, #030818);
       }
 
+      .scene.interactive {
+        touch-action: none;
+        cursor: crosshair;
+      }
+
       .noise {
         position: absolute;
         inset: 0;
@@ -168,6 +173,31 @@
         background: conic-gradient(from 140deg at 30% 65%, rgba(103, 244, 255, 0.14), transparent 22%, rgba(255, 118, 200, 0.15), transparent 60%);
         mix-blend-mode: screen;
         animation: spin 18s linear infinite;
+      }
+
+      .touch-dot {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(103, 244, 255, 0.7) 45%, rgba(103, 244, 255, 0) 70%);
+        filter: blur(0.4px) saturate(150%);
+        animation: fadeTrail 560ms ease-out forwards;
+      }
+
+      @keyframes fadeTrail {
+        from {
+          opacity: 0.95;
+          width: 18px;
+          height: 18px;
+        }
+        to {
+          opacity: 0;
+          width: 4px;
+          height: 4px;
+        }
       }
 
       .controls {
@@ -321,8 +351,8 @@
       <section class="panel">
         <span class="tag">Files-App Compatible</span>
         <h1>Flux <span class="gradient">Visual Mode</span></h1>
-        <p class="sub">This version is built to work directly in iPhone Files preview with no JavaScript required.</p>
-        <p class="hint">Tap the controls below to switch visual effects. Everything here is pure HTML + CSS.</p>
+        <p class="sub">This version is built to work directly in iPhone Files preview and now adds optional touch-trail interactivity when scripts are available.</p>
+        <p class="hint">Drag your finger in the black box to paint a glowing trail, then use the buttons to switch visual effects.</p>
 
         <section class="layout">
           <article class="visual-wrap">
@@ -354,8 +384,8 @@
 
           <aside class="stats">
             <article class="stat">
-              <strong>No JS</strong>
-              <p>Designed for Files preview compatibility.</p>
+              <strong>Touch Trail</strong>
+              <p>Finger movement now draws a glowing live trail.</p>
             </article>
             <article class="stat">
               <strong>Touch Ready</strong>
@@ -377,5 +407,58 @@
         </section>
       </section>
     </main>
+    <script>
+      (() => {
+        const scene = document.querySelector(".scene");
+        if (!scene) return;
+        scene.classList.add("interactive");
+
+        const colors = ["#67f4ff", "#ff76c8", "#a27cff", "#9dffb2"];
+        let active = false;
+        let lastStamp = 0;
+
+        function spawnDot(x, y) {
+          const dot = document.createElement("span");
+          dot.className = "touch-dot";
+          dot.style.left = `${x}px`;
+          dot.style.top = `${y}px`;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          dot.style.background = `radial-gradient(circle, rgba(255,255,255,0.95), ${color} 45%, rgba(0,0,0,0) 70%)`;
+          scene.appendChild(dot);
+          dot.addEventListener("animationend", () => dot.remove(), { once: true });
+        }
+
+        function pointerPos(event) {
+          const rect = scene.getBoundingClientRect();
+          return {
+            x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+            y: Math.max(0, Math.min(rect.height, event.clientY - rect.top))
+          };
+        }
+
+        scene.addEventListener("pointerdown", (event) => {
+          active = true;
+          scene.setPointerCapture(event.pointerId);
+          const p = pointerPos(event);
+          spawnDot(p.x, p.y);
+        });
+
+        scene.addEventListener("pointermove", (event) => {
+          if (!active) return;
+          const now = performance.now();
+          if (now - lastStamp < 16) return;
+          lastStamp = now;
+          const p = pointerPos(event);
+          spawnDot(p.x, p.y);
+        });
+
+        const release = () => {
+          active = false;
+        };
+        scene.addEventListener("pointerup", release);
+        scene.addEventListener("pointercancel", release);
+        scene.addEventListener("pointerleave", release);
+      })();
+    </script>
   </body>
 </html>
