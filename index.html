@@ -101,6 +101,60 @@
         position: relative;
       }
 
+      .fallback-scene {
+        position: absolute;
+        inset: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        background: radial-gradient(circle at 15% 20%, rgba(98, 246, 255, 0.22), transparent 35%),
+          radial-gradient(circle at 82% 80%, rgba(255, 111, 198, 0.2), transparent 40%),
+          linear-gradient(165deg, rgba(12, 17, 39, 0.95), rgba(4, 7, 18, 1));
+      }
+
+      .fallback-dot {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(1px);
+        opacity: 0.9;
+        animation: float 6s ease-in-out infinite;
+      }
+
+      .fallback-dot:nth-child(1) {
+        width: 26px;
+        height: 26px;
+        background: #62f6ff;
+        left: 20%;
+        top: 60%;
+      }
+
+      .fallback-dot:nth-child(2) {
+        width: 22px;
+        height: 22px;
+        background: #ff6fc6;
+        left: 60%;
+        top: 40%;
+        animation-delay: -2s;
+      }
+
+      .fallback-dot:nth-child(3) {
+        width: 18px;
+        height: 18px;
+        background: #9c86ff;
+        left: 72%;
+        top: 68%;
+        animation-delay: -4s;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translate3d(0, 0, 0);
+        }
+        50% {
+          transform: translate3d(0, -30px, 0);
+        }
+      }
+
       canvas {
         display: block;
         width: 100%;
@@ -114,6 +168,10 @@
         user-select: none;
       }
 
+      .js-ready .fallback-scene {
+        display: none;
+      }
+
       .canvas-status {
         position: absolute;
         left: 10px;
@@ -124,6 +182,16 @@
         border-radius: 999px;
         background: rgba(5, 9, 24, 0.65);
         border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .open-note {
+        margin-top: 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: #c4d4eb;
+        padding: 10px 12px;
+        font-size: 0.85rem;
       }
 
       .controls {
@@ -237,10 +305,18 @@
         <p class="sub">
           Touch and drag in the black box to spawn and pull particles. This build prioritizes mobile Safari/Chrome behavior and responsive touch controls.
         </p>
+        <p class="open-note">
+          If you open this from iPhone Files preview, JavaScript may be restricted. Use <strong>Share → Open in Safari</strong> (or any browser) for full interactivity.
+        </p>
 
         <div class="dashboard">
           <section class="sim-panel glass">
             <div class="canvas-wrap">
+              <div id="fallbackScene" class="fallback-scene" aria-hidden="true">
+                <span class="fallback-dot"></span>
+                <span class="fallback-dot"></span>
+                <span class="fallback-dot"></span>
+              </div>
               <canvas id="scene" aria-label="Physics visualization canvas"></canvas>
               <div id="canvasStatus" class="canvas-status">Ready</div>
             </div>
@@ -272,9 +348,16 @@
         </div>
       </section>
     </main>
+    <noscript>
+      <p style="padding:12px;color:white;background:#111a36;border-top:1px solid #2f3f72;">
+        JavaScript is required for the interactive particles. Open this file in Safari/Chrome and allow scripts.
+      </p>
+    </noscript>
 
     <script>
       (() => {
+        document.body.classList.add("js-ready");
+
         const canvas = document.getElementById("scene");
         const statusEl = document.getElementById("canvasStatus");
         const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
