@@ -131,10 +131,12 @@
     .status.error { color: var(--err); }
 
     #hiddenPlayer {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 320px;
+      height: 180px;
+      opacity: 0.01;
       pointer-events: none;
     }
 
@@ -294,6 +296,7 @@
 
     <p class="hint">Tip: Works with <code>youtube.com/watch?v=...</code>, <code>youtu.be/...</code>, and <code>/shorts/...</code> links.</p>
     <p id="status" class="status">Ready.</p>
+    <button id="resumeBtn" type="button" hidden>Tap to Resume Audio</button>
 
     <div id="hiddenPlayer"></div>
 
@@ -318,6 +321,7 @@
   <script>
     const urlInput = document.getElementById('urlInput');
     const playBtn = document.getElementById('playBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
     const statusEl = document.getElementById('status');
     const stage = document.getElementById('stage');
     const videoIdChip = document.getElementById('videoIdChip');
@@ -328,6 +332,7 @@
     let player = null;
     let apiReady = false;
     let eqTimer = null;
+    let fallbackTimer = null;
 
     for (let i = 0; i < 30; i += 1) {
       const bar = document.createElement('span');
@@ -338,6 +343,10 @@
     function setStatus(message, type = '') {
       statusEl.textContent = message;
       statusEl.className = `status ${type}`.trim();
+    }
+
+    function showResumeButton(show) {
+      resumeBtn.hidden = !show;
     }
 
     function extractYouTubeId(input) {
@@ -410,6 +419,7 @@
         stage.classList.add('playing');
         stateChip.textContent = 'Playing';
         startEqualizer();
+        showResumeButton(false);
         setStatus('Playing audio from YouTube.', 'ok');
       } else if (event.data === YTState.PAUSED) {
         stage.classList.remove('playing');
@@ -426,6 +436,17 @@
         setStatus('Buffering stream…', '');
       } else if (event.data === YTState.UNSTARTED) {
         stateChip.textContent = 'Ready';
+      }
+    }
+
+    function attemptPlayback() {
+      if (!player) return;
+      try {
+        player.unMute();
+        player.setVolume(100);
+        player.playVideo();
+      } catch (_err) {
+        // ignored; onError/onStateChange handles UX
       }
     }
 
@@ -446,11 +467,12 @@
       videoIdChip.textContent = `Video ID: ${id}`;
       stateChip.textContent = 'Loading';
       setCover(id);
+      showResumeButton(false);
 
       if (!player) {
         player = new YT.Player('hiddenPlayer', {
-          width: '1',
-          height: '1',
+          width: '320',
+          height: '180',
           videoId: id,
           playerVars: {
             autoplay: 1,
@@ -463,6 +485,7 @@
           events: {
             onReady: (ev) => {
               ev.target.setVolume(100);
+              ev.target.unMute();
               ev.target.playVideo();
               setStatus('Loaded. Attempting to play audio…', 'ok');
             },
@@ -477,12 +500,25 @@
         });
       } else {
         player.loadVideoById(id);
-        player.playVideo();
+        attemptPlayback();
         setStatus('Loading new video…', 'ok');
       }
+
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(() => {
+        const state = player?.getPlayerState?.();
+        if (state !== window.YT?.PlayerState?.PLAYING) {
+          showResumeButton(true);
+          setStatus('Autoplay may be blocked. Tap “Resume Audio”.', 'error');
+        }
+      }, 1800);
     }
 
     playBtn.addEventListener('click', loadVideoByUrl);
+    resumeBtn.addEventListener('click', () => {
+      attemptPlayback();
+      setStatus('Trying playback again…', 'ok');
+    });
     urlInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
