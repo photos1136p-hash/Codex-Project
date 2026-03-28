@@ -3,78 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Flux Playground • Mobile Physics Visualizer</title>
+    <title>Files-Safe Flux Visual</title>
     <style>
       :root {
-        --bg-0: #050813;
-        --bg-1: #0d1430;
-        --bg-2: #1f1454;
-        --text: #ecf7ff;
-        --muted: #a5bbd8;
-        --aqua: #62f6ff;
-        --violet: #9c86ff;
-        --pink: #ff6fc6;
-        --lime: #98ffae;
+        --bg0: #050816;
+        --bg1: #101c44;
+        --bg2: #2b145a;
+        --text: #eaf7ff;
+        --muted: #b4c8e4;
+        --cyan: #67f4ff;
+        --violet: #a27cff;
+        --pink: #ff76c8;
+        --green: #9dffb2;
       }
 
       * {
         box-sizing: border-box;
       }
 
-      html,
       body {
         margin: 0;
-        min-height: 100%;
-        font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+        min-height: 100vh;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
         color: var(--text);
-        background: radial-gradient(circle at 5% 0%, #1a2d66 0%, transparent 40%),
-          radial-gradient(circle at 90% 15%, #41195f 0%, transparent 35%),
-          radial-gradient(circle at 80% 100%, #15294f 0%, transparent 38%),
-          linear-gradient(145deg, var(--bg-0), var(--bg-1), var(--bg-2));
-        overflow-x: hidden;
+        background: radial-gradient(circle at 15% 5%, #26458c 0%, transparent 40%),
+          radial-gradient(circle at 85% 95%, #3f185f 0%, transparent 40%),
+          linear-gradient(145deg, var(--bg0), var(--bg1), var(--bg2));
       }
 
-      .wrapper {
-        width: min(1100px, 94vw);
+      .app {
+        width: min(980px, 94vw);
         margin-inline: auto;
-        padding: 18px 0 36px;
+        padding: 16px 0 28px;
       }
 
-      .glass {
-        background: linear-gradient(160deg, rgba(20, 33, 72, 0.72), rgba(8, 13, 27, 0.84));
-        border: 1px solid rgba(255, 255, 255, 0.12);
+      .panel {
         border-radius: 24px;
-        box-shadow: 0 20px 65px rgba(0, 0, 0, 0.35);
-        backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: linear-gradient(160deg, rgba(18, 30, 70, 0.78), rgba(6, 12, 27, 0.9));
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(12px);
+        padding: clamp(16px, 4vw, 30px);
       }
 
-      .hero {
-        padding: clamp(18px, 4vw, 36px);
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+      .tag {
+        display: inline-block;
         font-size: 0.74rem;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
+        padding: 6px 11px;
         border-radius: 999px;
-        padding: 6px 12px;
-        color: var(--aqua);
-        border: 1px solid rgba(98, 246, 255, 0.5);
-        background: rgba(98, 246, 255, 0.09);
+        border: 1px solid rgba(103, 244, 255, 0.5);
+        color: var(--cyan);
+        background: rgba(103, 244, 255, 0.1);
       }
 
       h1 {
-        margin: 14px 0 10px;
-        font-size: clamp(1.85rem, 7vw, 3.8rem);
-        line-height: 1.05;
-        letter-spacing: -0.03em;
+        margin: 12px 0 8px;
+        font-size: clamp(1.65rem, 7vw, 3.2rem);
+        line-height: 1.08;
       }
 
       .gradient {
-        background: linear-gradient(90deg, var(--aqua), var(--pink));
+        background: linear-gradient(90deg, var(--cyan), var(--pink));
         -webkit-background-clip: text;
         color: transparent;
       }
@@ -82,609 +73,309 @@
       .sub {
         margin: 0;
         color: var(--muted);
-        max-width: 60ch;
         line-height: 1.6;
       }
 
-      .dashboard {
-        margin-top: 16px;
-        display: grid;
-        gap: 14px;
-        grid-template-columns: 2fr 1fr;
-      }
-
-      .sim-panel {
-        padding: 12px;
-      }
-
-      .canvas-wrap {
-        position: relative;
-      }
-
-      .fallback-scene {
-        position: absolute;
-        inset: 0;
-        border-radius: 18px;
-        overflow: hidden;
-        background: radial-gradient(circle at 15% 20%, rgba(98, 246, 255, 0.22), transparent 35%),
-          radial-gradient(circle at 82% 80%, rgba(255, 111, 198, 0.2), transparent 40%),
-          linear-gradient(165deg, rgba(12, 17, 39, 0.95), rgba(4, 7, 18, 1));
-      }
-
-      .fallback-dot {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(1px);
-        opacity: 0.9;
-        animation: float 6s ease-in-out infinite;
-      }
-
-      .fallback-dot:nth-child(1) {
-        width: 26px;
-        height: 26px;
-        background: #62f6ff;
-        left: 20%;
-        top: 60%;
-      }
-
-      .fallback-dot:nth-child(2) {
-        width: 22px;
-        height: 22px;
-        background: #ff6fc6;
-        left: 60%;
-        top: 40%;
-        animation-delay: -2s;
-      }
-
-      .fallback-dot:nth-child(3) {
-        width: 18px;
-        height: 18px;
-        background: #9c86ff;
-        left: 72%;
-        top: 68%;
-        animation-delay: -4s;
-      }
-
-      @keyframes float {
-        0%,
-        100% {
-          transform: translate3d(0, 0, 0);
-        }
-        50% {
-          transform: translate3d(0, -30px, 0);
-        }
-      }
-
-      canvas {
-        display: block;
-        width: 100%;
-        height: min(54vh, 520px);
-        border-radius: 18px;
-        background: radial-gradient(circle at 10% 10%, rgba(98, 246, 255, 0.08), transparent 40%),
-          radial-gradient(circle at 90% 90%, rgba(255, 111, 198, 0.1), transparent 40%),
-          linear-gradient(165deg, rgba(12, 17, 39, 0.85), rgba(4, 7, 18, 0.98));
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        touch-action: none;
-        user-select: none;
-      }
-
-      .js-ready .fallback-scene {
-        display: none;
-      }
-
-      .canvas-status {
-        position: absolute;
-        left: 10px;
-        top: 10px;
-        font-size: 0.75rem;
-        color: #b7c9e5;
-        padding: 5px 8px;
-        border-radius: 999px;
-        background: rgba(5, 9, 24, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      }
-
-      .open-note {
-        margin-top: 10px;
+      .hint {
+        margin: 10px 0 0;
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: #c4d4eb;
+        background: rgba(255, 255, 255, 0.05);
         padding: 10px 12px;
-        font-size: 0.85rem;
+        color: #d6e8ff;
+        font-size: 0.88rem;
+      }
+
+      .layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 14px;
+      }
+
+      .visual-wrap {
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        background: rgba(0, 0, 0, 0.2);
+        padding: 10px;
+      }
+
+      .scene {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        height: min(56vh, 520px);
+        min-height: 300px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: radial-gradient(circle at 12% 15%, rgba(103, 244, 255, 0.15), transparent 38%),
+          radial-gradient(circle at 88% 84%, rgba(255, 118, 200, 0.2), transparent 38%),
+          linear-gradient(165deg, #091330, #030818);
+      }
+
+      .noise {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+        background-size: 4px 4px;
+        opacity: 0.05;
+      }
+
+      .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(1px) saturate(140%);
+      }
+
+      .orb.a {
+        width: 48px;
+        height: 48px;
+        background: var(--cyan);
+        left: 15%;
+        top: 62%;
+        animation: floatA 6s ease-in-out infinite;
+      }
+
+      .orb.b {
+        width: 42px;
+        height: 42px;
+        background: var(--pink);
+        left: 58%;
+        top: 34%;
+        animation: floatB 8s ease-in-out infinite;
+      }
+
+      .orb.c {
+        width: 36px;
+        height: 36px;
+        background: var(--violet);
+        left: 72%;
+        top: 70%;
+        animation: floatC 7s ease-in-out infinite;
+      }
+
+      .orb.d {
+        width: 28px;
+        height: 28px;
+        background: var(--green);
+        left: 32%;
+        top: 42%;
+        animation: floatD 9s ease-in-out infinite;
+      }
+
+      .trail {
+        position: absolute;
+        inset: 0;
+        background: conic-gradient(from 140deg at 30% 65%, rgba(103, 244, 255, 0.14), transparent 22%, rgba(255, 118, 200, 0.15), transparent 60%);
+        mix-blend-mode: screen;
+        animation: spin 18s linear infinite;
       }
 
       .controls {
-        margin-top: 12px;
+        margin-top: 10px;
         display: grid;
-        gap: 10px;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
       }
 
-      button {
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: linear-gradient(155deg, rgba(98, 246, 255, 0.18), rgba(156, 134, 255, 0.1));
-        color: var(--text);
+      .mode-toggle {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .controls label,
+      .link-btn {
+        display: block;
+        text-align: center;
+        border-radius: 13px;
+        min-height: 44px;
+        padding: 11px 10px;
         font-weight: 600;
-        border-radius: 14px;
-        min-height: 46px;
-        padding: 10px 12px;
-        cursor: pointer;
-        transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+        text-decoration: none;
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: linear-gradient(160deg, rgba(103, 244, 255, 0.16), rgba(162, 124, 255, 0.1));
       }
 
-      button:hover,
-      button:focus-visible {
-        transform: translateY(-1px);
-        border-color: rgba(98, 246, 255, 0.55);
-        box-shadow: 0 10px 24px rgba(98, 246, 255, 0.18);
-        outline: none;
+      #gravity:checked ~ .scene .orb {
+        animation-duration: 3.8s;
       }
 
-      .button-active {
-        border-color: rgba(152, 255, 174, 0.6);
-        box-shadow: inset 0 0 0 1px rgba(152, 255, 174, 0.4);
+      #wind:checked ~ .scene .orb {
+        animation-name: sway;
       }
 
-      .side {
-        padding: 16px;
+      #burst:checked ~ .scene .orb {
+        transform: scale(1.45);
+      }
+
+      #glow:checked ~ .scene .orb {
+        box-shadow: 0 0 30px currentColor;
+      }
+
+      #trails:checked ~ .scene .trail {
+        opacity: 0;
+      }
+
+      #gravity:checked ~ .controls label[for="gravity"],
+      #wind:checked ~ .controls label[for="wind"],
+      #burst:checked ~ .controls label[for="burst"],
+      #glow:checked ~ .controls label[for="glow"],
+      #trails:checked ~ .controls label[for="trails"] {
+        border-color: rgba(157, 255, 178, 0.7);
+        box-shadow: inset 0 0 0 1px rgba(157, 255, 178, 0.45);
+      }
+
+      .stats {
         display: grid;
-        gap: 10px;
+        gap: 8px;
         align-content: start;
       }
 
-      .metric {
-        border-radius: 14px;
+      .stat {
+        border-radius: 13px;
         border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.03);
-        padding: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 11px;
       }
 
-      .metric strong {
+      .stat strong {
         display: block;
-        font-size: 1.3rem;
+        font-size: 1.25rem;
       }
 
-      .tips {
+      .stat p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .steps {
         margin: 0;
         padding-left: 18px;
         color: var(--muted);
       }
 
-      .tips li {
-        margin-bottom: 7px;
+      .steps li {
+        margin-bottom: 6px;
       }
 
-      .footer {
-        margin-top: 10px;
-        color: var(--muted);
-        font-size: 0.85rem;
+      @keyframes floatA {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(18px, -30px); }
+      }
+
+      @keyframes floatB {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(-16px, 22px); }
+      }
+
+      @keyframes floatC {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(-22px, -26px); }
+      }
+
+      @keyframes floatD {
+        0%,
+        100% { transform: translate(0, 0); }
+        50% { transform: translate(22px, 20px); }
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes sway {
+        0%,
+        100% { transform: translate(0, 0); }
+        25% { transform: translate(-18px, 10px); }
+        75% { transform: translate(18px, -12px); }
       }
 
       @media (max-width: 900px) {
-        .dashboard {
+        .layout {
           grid-template-columns: 1fr;
         }
       }
 
       @media (max-width: 700px) {
-        .wrapper {
-          padding-top: 12px;
-        }
-
-        .hero {
-          border-radius: 18px;
-        }
-
         .controls {
           grid-template-columns: 1fr;
-        }
-
-        canvas {
-          height: 52vh;
-          min-height: 300px;
         }
       }
 
       @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
+        .orb,
+        .trail {
           animation: none !important;
-          transition: none !important;
-          scroll-behavior: auto !important;
         }
       }
     </style>
   </head>
   <body>
-    <main class="wrapper">
-      <section class="hero glass">
-        <span class="eyebrow">Mobile physics + graphics</span>
-        <h1>Flux <span class="gradient">Physics Playground</span></h1>
-        <p class="sub">
-          Touch and drag in the black box to spawn and pull particles. This build prioritizes mobile Safari/Chrome behavior and responsive touch controls.
-        </p>
-        <p class="open-note">
-          If you open this from iPhone Files preview, JavaScript may be restricted. Use <strong>Share → Open in Safari</strong> (or any browser) for full interactivity.
-        </p>
+    <main class="app">
+      <section class="panel">
+        <span class="tag">Files-App Compatible</span>
+        <h1>Flux <span class="gradient">Visual Mode</span></h1>
+        <p class="sub">This version is built to work directly in iPhone Files preview with no JavaScript required.</p>
+        <p class="hint">Tap the controls below to switch visual effects. Everything here is pure HTML + CSS.</p>
 
-        <div class="dashboard">
-          <section class="sim-panel glass">
-            <div class="canvas-wrap">
-              <div id="fallbackScene" class="fallback-scene" aria-hidden="true">
-                <span class="fallback-dot"></span>
-                <span class="fallback-dot"></span>
-                <span class="fallback-dot"></span>
-              </div>
-              <canvas id="scene" aria-label="Physics visualization canvas"></canvas>
-              <div id="canvasStatus" class="canvas-status">Ready</div>
+        <section class="layout">
+          <article class="visual-wrap">
+            <input class="mode-toggle" id="gravity" type="checkbox" />
+            <input class="mode-toggle" id="wind" type="checkbox" />
+            <input class="mode-toggle" id="burst" type="checkbox" />
+            <input class="mode-toggle" id="glow" type="checkbox" />
+            <input class="mode-toggle" id="trails" type="checkbox" />
+
+            <div class="controls" aria-label="Visual controls">
+              <label for="gravity">🌍 Gravity Boost</label>
+              <label for="wind">💨 Wind Mode</label>
+              <label for="burst">✨ Burst Size</label>
+              <label for="glow">💡 Neon Glow</label>
+              <label for="trails">🌈 Hide Trails</label>
+
+              <a class="link-btn" href="index.html">♻️ Reset View</a>
             </div>
 
-            <div class="controls" aria-label="Simulation controls">
-              <button id="btnBurst" type="button">✨ Add Burst</button>
-              <button id="btnGravity" class="button-active" type="button">🌍 Gravity: ON</button>
-              <button id="btnWind" type="button">💨 Wind: OFF</button>
-              <button id="btnTrails" class="button-active" type="button">🌈 Trails: ON</button>
-              <button id="btnSlow" type="button">🐢 Slow Motion: OFF</button>
-              <button id="btnPause" type="button">⏸ Pause</button>
-              <button id="btnColor" type="button">🎨 Change Palette</button>
-              <button id="btnReset" type="button">♻️ Reset</button>
+            <div class="scene" aria-label="Pure CSS animated visual">
+              <div class="noise"></div>
+              <div class="trail"></div>
+              <div class="orb a"></div>
+              <div class="orb b"></div>
+              <div class="orb c"></div>
+              <div class="orb d"></div>
             </div>
-          </section>
+          </article>
 
-          <aside class="side glass">
-            <article class="metric"><strong id="mParticles">0</strong>Particles</article>
-            <article class="metric"><strong id="mEnergy">0</strong>Energy score</article>
-            <article class="metric"><strong id="mFps">0</strong>Approx FPS</article>
-            <ul class="tips">
-              <li>Tap once to create a burst.</li>
-              <li>Press + drag to pull particles with touch gravity.</li>
-              <li>Wind oscillates left/right to create wave motion.</li>
-              <li>Use Reset if the scene gets too busy.</li>
-            </ul>
-            <p class="footer">Mobile-safe: `touch-action: none`, pointer capture, resize observer, and fallback if the context fails.</p>
+          <aside class="stats">
+            <article class="stat">
+              <strong>No JS</strong>
+              <p>Designed for Files preview compatibility.</p>
+            </article>
+            <article class="stat">
+              <strong>Touch Ready</strong>
+              <p>Big tap targets for one-handed mobile use.</p>
+            </article>
+            <article class="stat">
+              <strong>Instant</strong>
+              <p>Loads as a single file with no external assets.</p>
+            </article>
+            <article class="stat">
+              <strong>How to use</strong>
+              <ol class="steps">
+                <li>Tap any mode button.</li>
+                <li>Watch the visual change instantly.</li>
+                <li>Tap Reset View to return to default.</li>
+              </ol>
+            </article>
           </aside>
-        </div>
+        </section>
       </section>
     </main>
-    <noscript>
-      <p style="padding:12px;color:white;background:#111a36;border-top:1px solid #2f3f72;">
-        JavaScript is required for the interactive particles. Open this file in Safari/Chrome and allow scripts.
-      </p>
-    </noscript>
-
-    <script>
-      (() => {
-        document.body.classList.add("js-ready");
-
-        const canvas = document.getElementById("scene");
-        const statusEl = document.getElementById("canvasStatus");
-        const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
-
-        if (!ctx) {
-          statusEl.textContent = "Canvas failed (2D context unavailable)";
-          return;
-        }
-
-        const controls = {
-          burst: document.getElementById("btnBurst"),
-          gravity: document.getElementById("btnGravity"),
-          wind: document.getElementById("btnWind"),
-          trails: document.getElementById("btnTrails"),
-          slow: document.getElementById("btnSlow"),
-          pause: document.getElementById("btnPause"),
-          color: document.getElementById("btnColor"),
-          reset: document.getElementById("btnReset")
-        };
-
-        const metrics = {
-          particles: document.getElementById("mParticles"),
-          energy: document.getElementById("mEnergy"),
-          fps: document.getElementById("mFps")
-        };
-
-        const palettes = [
-          ["#62f6ff", "#9c86ff", "#ff6fc6", "#98ffae"],
-          ["#ffd166", "#ef476f", "#06d6a0", "#118ab2"],
-          ["#f7b267", "#f4845f", "#f27059", "#84dcc6"],
-          ["#a9def9", "#e4c1f9", "#ff99c8", "#fcf6bd"]
-        ];
-
-        let paletteIndex = 0;
-        let pointerId = null;
-        const state = {
-          particles: [],
-          gravityOn: true,
-          windOn: false,
-          trailsOn: true,
-          slowOn: false,
-          paused: false,
-          pointer: { x: 0, y: 0, active: false },
-          lastFrameTs: performance.now(),
-          fpsAvg: 60,
-          windPhase: 0,
-          ready: false
-        };
-
-        function random(min, max) {
-          return Math.random() * (max - min) + min;
-        }
-
-        function resize(forceSeed = false) {
-          const rect = canvas.getBoundingClientRect();
-          if (rect.width < 10 || rect.height < 10) {
-            statusEl.textContent = "Waiting for canvas layout…";
-            return false;
-          }
-
-          const dpr = Math.min(window.devicePixelRatio || 1, 2);
-          const width = Math.floor(rect.width * dpr);
-          const height = Math.floor(rect.height * dpr);
-
-          if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width;
-            canvas.height = height;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            if (forceSeed) {
-              seed(Math.max(80, Math.floor(rect.width * 0.2)));
-            }
-          }
-
-          statusEl.textContent = "Live";
-          return true;
-        }
-
-        function createParticle(x = random(0, canvas.clientWidth), y = random(0, canvas.clientHeight), burst = false) {
-          const colors = palettes[paletteIndex];
-          return {
-            x,
-            y,
-            vx: random(-1.6, 1.6) * (burst ? 2.4 : 1),
-            vy: random(-1.7, 1.7) * (burst ? 2.4 : 1),
-            radius: random(3.8, burst ? 8.5 : 7.2),
-            color: colors[(Math.random() * colors.length) | 0],
-            life: random(300, 700),
-            glow: random(14, 26)
-          };
-        }
-
-        function seed(count = 100) {
-          state.particles = Array.from({ length: count }, () => createParticle());
-        }
-
-        function addBurst(cx = canvas.clientWidth * 0.5, cy = canvas.clientHeight * 0.5) {
-          for (let i = 0; i < 44; i++) {
-            state.particles.push(createParticle(cx, cy, true));
-          }
-        }
-
-        function pointerFromEvent(event) {
-          const rect = canvas.getBoundingClientRect();
-          state.pointer.x = event.clientX - rect.left;
-          state.pointer.y = event.clientY - rect.top;
-        }
-
-        function bindControls() {
-          controls.burst.addEventListener("click", () => {
-            const x = state.pointer.active ? state.pointer.x : canvas.clientWidth * 0.5;
-            const y = state.pointer.active ? state.pointer.y : canvas.clientHeight * 0.5;
-            addBurst(x, y);
-          });
-
-          controls.gravity.addEventListener("click", () => {
-            state.gravityOn = !state.gravityOn;
-            controls.gravity.textContent = `🌍 Gravity: ${state.gravityOn ? "ON" : "OFF"}`;
-            controls.gravity.classList.toggle("button-active", state.gravityOn);
-          });
-
-          controls.wind.addEventListener("click", () => {
-            state.windOn = !state.windOn;
-            controls.wind.textContent = `💨 Wind: ${state.windOn ? "ON" : "OFF"}`;
-            controls.wind.classList.toggle("button-active", state.windOn);
-          });
-
-          controls.trails.addEventListener("click", () => {
-            state.trailsOn = !state.trailsOn;
-            controls.trails.textContent = `🌈 Trails: ${state.trailsOn ? "ON" : "OFF"}`;
-            controls.trails.classList.toggle("button-active", state.trailsOn);
-          });
-
-          controls.slow.addEventListener("click", () => {
-            state.slowOn = !state.slowOn;
-            controls.slow.textContent = `🐢 Slow Motion: ${state.slowOn ? "ON" : "OFF"}`;
-            controls.slow.classList.toggle("button-active", state.slowOn);
-          });
-
-          controls.pause.addEventListener("click", () => {
-            state.paused = !state.paused;
-            controls.pause.textContent = state.paused ? "▶️ Resume" : "⏸ Pause";
-          });
-
-          controls.color.addEventListener("click", () => {
-            paletteIndex = (paletteIndex + 1) % palettes.length;
-            const palette = palettes[paletteIndex];
-            state.particles.forEach((p) => {
-              p.color = palette[(Math.random() * palette.length) | 0];
-            });
-          });
-
-          controls.reset.addEventListener("click", () => {
-            seed(100);
-          });
-
-          canvas.addEventListener("pointerdown", (event) => {
-            pointerId = event.pointerId;
-            canvas.setPointerCapture(pointerId);
-            state.pointer.active = true;
-            pointerFromEvent(event);
-            addBurst(state.pointer.x, state.pointer.y);
-          });
-
-          canvas.addEventListener("pointermove", (event) => {
-            if (!state.pointer.active) return;
-            pointerFromEvent(event);
-          });
-
-          const releasePointer = () => {
-            if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
-              canvas.releasePointerCapture(pointerId);
-            }
-            pointerId = null;
-            state.pointer.active = false;
-          };
-
-          canvas.addEventListener("pointerup", releasePointer);
-          canvas.addEventListener("pointercancel", releasePointer);
-          canvas.addEventListener("pointerleave", () => {
-            if (!state.pointer.active) return;
-            state.pointer.active = false;
-          });
-        }
-
-        function update(dt) {
-          const gravity = state.gravityOn ? 0.052 : 0;
-          state.windPhase += dt * 0.0018;
-          const wind = state.windOn ? Math.sin(state.windPhase) * 0.035 : 0;
-
-          const pointerPull = state.pointer.active ? 0.042 : 0;
-
-          for (const p of state.particles) {
-            if (pointerPull) {
-              const dx = state.pointer.x - p.x;
-              const dy = state.pointer.y - p.y;
-              const distSq = dx * dx + dy * dy + 16;
-              const force = Math.min(140 / distSq, 0.33);
-              p.vx += dx * force * pointerPull;
-              p.vy += dy * force * pointerPull;
-            }
-
-            p.vy += gravity;
-            p.vx += wind;
-            p.vx *= 0.994;
-            p.vy *= 0.996;
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
-            p.life -= dt;
-
-            if (p.x < p.radius) {
-              p.x = p.radius;
-              p.vx *= -0.88;
-            } else if (p.x > canvas.clientWidth - p.radius) {
-              p.x = canvas.clientWidth - p.radius;
-              p.vx *= -0.88;
-            }
-
-            if (p.y < p.radius) {
-              p.y = p.radius;
-              p.vy *= -0.88;
-            } else if (p.y > canvas.clientHeight - p.radius) {
-              p.y = canvas.clientHeight - p.radius;
-              p.vy *= -0.84;
-            }
-          }
-
-          state.particles = state.particles.filter((p) => p.life > 0);
-
-          while (state.particles.length < 80) {
-            state.particles.push(createParticle());
-          }
-
-          if (state.particles.length > 320) {
-            state.particles.splice(0, state.particles.length - 320);
-          }
-        }
-
-        function draw() {
-          if (state.trailsOn) {
-            ctx.fillStyle = "rgba(6, 9, 20, 0.2)";
-            ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-          } else {
-            ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-          }
-
-          for (const p of state.particles) {
-            const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.glow);
-            g.addColorStop(0, p.color);
-            g.addColorStop(1, "rgba(255,255,255,0)");
-            ctx.fillStyle = g;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.glow, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-
-        function updateMetrics(dt) {
-          const fps = 1000 / Math.max(dt, 1);
-          state.fpsAvg = state.fpsAvg * 0.9 + fps * 0.1;
-
-          let energy = 0;
-          for (const p of state.particles) {
-            energy += Math.abs(p.vx) + Math.abs(p.vy);
-          }
-
-          metrics.particles.textContent = String(state.particles.length);
-          metrics.energy.textContent = energy.toFixed(1);
-          metrics.fps.textContent = state.fpsAvg.toFixed(0);
-        }
-
-        function tick(now) {
-          const elapsed = now - state.lastFrameTs;
-          state.lastFrameTs = now;
-          const step = Math.min(elapsed, 32) * (state.slowOn ? 0.45 : 1);
-
-          if (state.ready && !state.paused) {
-            update(step * 0.06);
-            draw();
-            updateMetrics(elapsed);
-          }
-
-          requestAnimationFrame(tick);
-        }
-
-        function init() {
-          state.ready = resize(true);
-          if (!state.ready) {
-            let tries = 0;
-            const probe = () => {
-              tries += 1;
-              state.ready = resize(true);
-              if (!state.ready && tries < 20) {
-                requestAnimationFrame(probe);
-              }
-            };
-            requestAnimationFrame(probe);
-          }
-
-          if ("ResizeObserver" in window) {
-            const ro = new ResizeObserver(() => {
-              resize(false);
-            });
-            ro.observe(canvas);
-          } else {
-            window.addEventListener("resize", () => resize(false));
-          }
-
-          bindControls();
-          seed(100);
-
-          requestAnimationFrame((ts) => {
-            state.lastFrameTs = ts;
-            tick(ts);
-          });
-        }
-
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", init, { once: true });
-        } else {
-          init();
-        }
-      })();
-    </script>
   </body>
 </html>
